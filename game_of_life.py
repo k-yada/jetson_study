@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
 import numpy
+import pycuda.driver as cuda
+import pycuda.gpuarray as gpuarray
+import pycuda.autoinit
 import curses
 from curses import wrapper
 import time
+
+from pycuda.compiler import SourceModule
+
+BLOCKSIZE = 32
+GPU_NITER = 1
 
 row2str = lambda row: ''.join("O" if c != 0 else ' ' for c in row)
 cell_value = lambda world, height, width, y, x: world[y % height, x % width]
@@ -48,6 +56,20 @@ def calc_next_world_cpu(world, next_world):
 		for x in range(width):
 			set_next_cell_value(world, next_world, height, width, y, x)
 
+def calc_next_world_gpu(world, next_world):
+	height, width = world.shape
+	mod = SourceModule("""
+	__global__ void calc_next_world_cpu(const int* __restrict__ world, const int* __restrict__ world, const int world_size_x, int world_size_y) {
+	}
+	""")
+	calc_next_world_gpu = mod.get_function("calc_next_world_cpu")
+	block = (BLOCKSIZE, BLOCKSIZE, 1)
+	grid = ((width + block[0] - 1) // block[0], (height + block[1] - 1) // block[1])
+	print("Grid = ({0}, {1}), Block = ({2}, {3})".format(grid[0], grid[1], block[0], block[1]))
+
+	start = cuda.Event()
+	end = cuda.Event()
+
 def game_of_life(stdscr, height, width):
 	# 世界の初期値
 	world = numpy.random.randint(2, size=(height,width), dtype=numpy.int32)
@@ -61,7 +83,8 @@ def game_of_life(stdscr, height, width):
 		generation += 1
 		print_world(stdscr, world, generation, elapsed)
 		start_time = time.time()
-		calc_next_world_cpu(world, next_world)
+		#calc_next_world_cpu(world, next_world)
+		calc_next_world_gpu(world, next_world)
 		duration = time.time() - start_time
 		elapsed += duration
 		world, next_world = next_world, world
