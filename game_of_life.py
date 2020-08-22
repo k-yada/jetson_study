@@ -43,7 +43,7 @@ def set_next_cell_value(world, next_world, height, width, y, x):
 		next_value = 1
 	else:
 		next_value = 0
-		
+
 	next_world[y, x] = next_value
 	#if num_live >= 4 and num_live <= 1:
 	#	next_value = 0
@@ -56,16 +56,49 @@ def calc_next_world_cpu(world, next_world):
 		for x in range(width):
 			set_next_cell_value(world, next_world, height, width, y, x)
 
+#cell_value = lambda world, height, width, y, x: world[y % height, x % width]
 def calc_next_world_gpu(world, next_world):
 	height, width = world.shape
 	mod = SourceModule("""
-	__global__ void calc_next_world_cpu(const int* __restrict__ world, const int* __restrict__ next_world, const int world_size_x, int world_size_y) {
+	__global__ void calc_next_world_cpu(const int* __restrict__ world, int* next_world, const int world_size_x, int world_size_y) {
+    	int mat_x = threadIdx.x + blockIdx.x * blockDim.x;
+    	int mat_y = threadIdx.y + blockIdx.y * blockDim.y;
+		if (mat_x >= world_size_x) {
+        	return;
+    	}
+    	if (mat_y >= world_size_y) {
+        	return;
+    	}
+
+		const int index = mat_y * world_size_x + mat_x;
+		const int current_value = world[(mat_y % world_size_y) * world_size_x + (mat_x % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x, mat_y);
+		int next_value = current_value;
+		int num_live = 0;
+		num_live += world[((mat_y - 1) % world_size_y) * world_size_x + ((mat_x - 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x - 1, mat_y - 1);
+		num_live += world[((mat_y - 1) % world_size_y) * world_size_x + ((mat_x    ) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x - 1, mat_y    );
+		num_live += world[((mat_y - 1) % world_size_y) * world_size_x + ((mat_x + 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x - 1, mat_y + 1);
+		num_live += world[((mat_y    ) % world_size_y) * world_size_x + ((mat_x - 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x    , mat_y - 1);
+		num_live += world[((mat_y    ) % world_size_y) * world_size_x + ((mat_x + 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x    , mat_y + 1);
+		num_live += world[((mat_y + 1) % world_size_y) * world_size_x + ((mat_x - 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x + 1, mat_y - 1);
+		num_live += world[((mat_y + 1) % world_size_y) * world_size_x + ((mat_x    ) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x + 1, mat_y    );
+		num_live += world[((mat_y + 1) % world_size_y) * world_size_x + ((mat_x + 1) % world_size_x)]; //cell_value(world, world_size_x, world_size_y, mat_x + 1, mat_y + 1);
+
+		if(current_value == 0 && num_live == 3) {
+			next_value = 1;
+		}
+		else if(current_value == 1 && (num_live == 2 || num_live == 3)){
+			next_value = 1;
+		} else {
+			next_value = 0;
+		}
+
+		next_world[index] = next_value;
 	}
 	""")
 	calc_next_world_gpu = mod.get_function("calc_next_world_cpu")
 	block = (BLOCKSIZE, BLOCKSIZE, 1)
 	grid = ((width + block[0] - 1) // block[0], (height + block[1] - 1) // block[1])
-	print("Grid = ({0}, {1}), Block = ({2}, {3})".format(grid[0], grid[1], block[0], block[1]))
+	#print("Grid = ({0}, {1}), Block = ({2}, {3})".format(grid[0], grid[1], block[0], block[1]))
 
 	start = cuda.Event()
 	end = cuda.Event()
