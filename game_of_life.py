@@ -69,6 +69,11 @@ def calc_next_world_gpu(world, next_world):
 
 	start = cuda.Event()
 	end = cuda.Event()
+	start.record()
+	for i in range(GPU_NITER):
+    	calc_next_world_gpu(cuda.In(world), cuda.Out(next_world), numpy.int32(width), numpy.int32(height), block = block, grid = grid)
+	end.record()
+	end.synchronize()
 
 def game_of_life(stdscr, height, width):
 	# 世界の初期値
