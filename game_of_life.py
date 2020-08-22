@@ -59,7 +59,7 @@ def calc_next_world_cpu(world, next_world):
 def calc_next_world_gpu(world, next_world):
 	height, width = world.shape
 	mod = SourceModule("""
-	__global__ void calc_next_world_cpu(const int* __restrict__ world, const int* __restrict__ world, const int world_size_x, int world_size_y) {
+	__global__ void calc_next_world_cpu(const int* __restrict__ world, const int* __restrict__ next_world, const int world_size_x, int world_size_y) {
 	}
 	""")
 	calc_next_world_gpu = mod.get_function("calc_next_world_cpu")
