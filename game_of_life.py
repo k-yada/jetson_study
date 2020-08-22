@@ -21,7 +21,7 @@ def print_world(stdscr, world, generation, elapsed):
 	for y in range(height):
 		row = world[y]
 		stdscr.addstr(y, 0, row2str(row))
-	stdscr.addstr(height, 0, "Generation: %06d, Elapsed: %.6f[sec]" % (generation, elapsed / generation), curses.A_REVERSE)
+	stdscr.addstr(height, 0, "Generation: %06d, Duration: %.6f[sec]" % (generation, elapsed), curses.A_REVERSE)
 	stdscr.refresh()
 
 def set_next_cell_value(world, next_world, height, width, y, x):
@@ -117,12 +117,13 @@ def game_of_life(stdscr, height, width):
 
 	elapsed = 0.0
 	generation = 0
+	duration = 0.0
 	while True:
 		generation += 1
-		print_world(stdscr, world, generation, elapsed)
+		print_world(stdscr, world, generation, duration)
 		start_time = time.time()
-		#calc_next_world_cpu(world, next_world)
-		calc_next_world_gpu(world, next_world)
+		calc_next_world_cpu(world, next_world)
+		#calc_next_world_gpu(world, next_world)
 		duration = time.time() - start_time
 		elapsed += duration
 		world, next_world = next_world, world
