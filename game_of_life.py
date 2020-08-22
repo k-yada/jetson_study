@@ -71,7 +71,7 @@ def calc_next_world_gpu(world, next_world):
 	end = cuda.Event()
 	start.record()
 	for i in range(GPU_NITER):
-    	calc_next_world_gpu(cuda.In(world), cuda.Out(next_world), numpy.int32(width), numpy.int32(height), block = block, grid = grid)
+		calc_next_world_gpu(cuda.In(world), cuda.Out(next_world), numpy.int32(width), numpy.int32(height), block = block, grid = grid)
 	end.record()
 	end.synchronize()
 
